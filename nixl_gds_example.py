@@ -24,7 +24,7 @@ from nixl._api import nixl_agent, nixl_agent_config
 
 if __name__ == "__main__":
     # Increase buffer size for better performance with large files
-    buf_size = 64 * 1024 * 1024  # 64 MB buffer for large file transfers
+    buf_size = 5 * 1024 * 1024  # 5 MB buffer for large file transfers
     # Allocate memory and register with NIXL
 
     if len(sys.argv) < 2:
@@ -92,6 +92,10 @@ if __name__ == "__main__":
     agent1_xfer_files_input = agent1_file_descs_input.trim()
     agent1_xfer_files_output = agent1_file_descs_output.trim()
 
+    # Initialize timing variables
+    upload_time = 0.0
+    download_time = 0.0
+    
     # First, read from input file into first buffer (GPU upload)
     print("Reading from input file to GPU...")
     start_time = time.time()

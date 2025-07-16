@@ -39,20 +39,11 @@ chmod +x setup_venv.sh
 
 # Run the setup script
 ./setup_venv.sh
-```
 
-Or manually:
-
-```bash
-# Create virtual environment
-python3 -m venv venv
-
-# Activate virtual environment
 source venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
 ```
+
 
 ### 3. NIXL Library
 
@@ -62,12 +53,15 @@ Ensure NIXL is properly installed and configured in your system. The `NIXL_PLUGI
 
 ### Core Scripts
 
-- **`with_nxl.py`** - Comprehensive NIXL benchmark demonstrating:
-  - Agent setup and configuration
-  - Memory registration and management
-  - Data transfer operations (READ/WRITE)
-  - Notification system
-  - Resource cleanup
+- **`with_nxl_ucx.py`** - Comprehensive NIXL benchmark using UCX backend that demonstrates:
+  - Agent setup and configuration with UCX transport
+  - Memory registration and management for high-performance data transfer
+  - Bidirectional data transfer operations (READ/WRITE) between initiator and target agents
+  - Inter-agent notification system for coordination
+  - Proper resource cleanup and memory deallocation
+  - Performance validation through multiple transfer cycles
+  - **Communication**: CPU-to-CPU communication using DRAM memory (no GPU involved)
+  - **Data Transfer**: 512 bytes per transfer (2 × 256-byte buffers) with 3 total transfers (~1.5 KB total)
 
 - **`without_nxl.py`** - Baseline benchmark without NIXL for comparison
 
@@ -98,100 +92,41 @@ Ensure NIXL is properly installed and configured in your system. The `NIXL_PLUGI
 source venv/bin/activate
 
 # Run the comprehensive NIXL test
-python with_nxl.py
+python with_nxl_ucx.py
 ```
 
 ### Baseline Comparison
 
 ```bash
 # Run baseline test without NIXL
-python without_nxl.py
+python without_nixl.py
 ```
 
 ### GDS Example
 
-```bash
-# Run NIXL with GDS example (requires GDS plugin)
-python nixl_gds_example.py <file_path>
 
-# Run GDS example with fallback (recommended)
-python nixl_gds_example_fallback.py <file_path>
-```
 
 **Note**: The GDS example requires NVIDIA GDS to be installed and NIXL to be built with GDS support. If you encounter issues, use the fallback version or run the diagnostic script.
 
-## Expected Output
 
-The `with_nxl.py` script will output:
-- NIXL plugin information and configuration
-- Memory registration details
-- Transfer operation status
-- Completion confirmations for both initiator and target agents
-- Resource cleanup confirmation
 
-## Troubleshooting
-
-### GDS Installation Issues
-
-If you encounter issues installing NVIDIA GDS:
-
-1. **Check Ubuntu version compatibility**: The script is configured for Ubuntu 22.04. For other versions, modify the repository URL in `install_gds.sh`.
-
-2. **Manual repository addition**:
-   ```bash
-   # For Ubuntu 20.04
-   wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb
-   
-   # For Ubuntu 18.04
-   wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-keyring_1.1-1_all.deb
-   ```
-
-3. **Check available packages**:
-   ```bash
-   apt search nvidia-gds
-   ```
-
-### NIXL Configuration Issues
-
-- Ensure `NIXL_PLUGIN_DIR` environment variable is set correctly
-- Verify NIXL library is properly installed
-- Check that UCX backend is available
-
-### GDS Plugin Issues
-
-If the GDS example fails with "GDS not in plugin_list":
-
-1. **Run diagnostic script**:
-   ```bash
-   python check_nixl_plugins.py
-   ```
-
-2. **Install NVIDIA GDS** (if not already installed):
-   ```bash
-   ./install_gds.sh
-   ```
-
-3. **Use fallback example**:
-   ```bash
-   python nixl_gds_example_fallback.py <file_path>
-   ```
-
-4. **Check NIXL build configuration**: Ensure NIXL was built with GDS support enabled
 
 ### Rebuilding NIXL with GDS Support
 
 If you need GDS functionality, you can rebuild NIXL with GDS support:
 
 ```bash
-# Simple rebuild (recommended)
-./rebuild_nixl_simple.sh
 
-# Comprehensive rebuild with detailed logging
-./rebuild_nixl_with_gds.sh
+
+
+# Simple rebuild (recommended)
+# ./rebuild_nixl_simple.sh
+
 ```
 
 **Prerequisites for rebuilding:**
 - NIXL source code (set `NIXL_SOURCE_URL` or place in `../nixl`, `../../nixl`, or `./nixl`)
+  ` git clone https://github.com/ai-dynamo/nixl.git`
 - CUDA installation (automatically detected)
 - NVIDIA GDS (installed via `./install_gds.sh`)
 - Build tools (automatically installed if missing)
@@ -202,10 +137,26 @@ If you're using a virtual environment, you need to install the newly built NIXL:
 
 ```bash
 # Navigate to the NIXL source directory
-cd nixl_build/nixl_source
+
 
 # Install in development mode to your virtual environment
 pip install -e .
+
+./install_gds.sh
+
+cd ~/nixl_benchmark/nixl_build/nixl_source
+
+sudo update-alternatives --install /usr/local/cuda cuda /usr/local/cuda-12.8 128
+
+cd nixl_build/nixl_source && rm -rf build && export LD_LIBRARY_PATH=/usr/local/cuda-12.8/targets/x86_64-linux/lib:$LD_LIBRARY_PATH && meson setup build --prefix=/usr/local -Dgds_path=/usr/local/cuda-12.8
+
+ninja -C build
+
+sudo ninja -C build install
+sudo ldconfig
+
+
+
 ```
 
 **Verify GDS plugin availability:**
@@ -225,6 +176,18 @@ See `requirements.txt` for Python package dependencies:
 - torch
 - nixl (NIXL Python bindings)
 
+
+## test gds 
+
+- First generate the test file 
+```bash
+python create_test_file.py
+python nixl_gds_example.py test_file_2.5gb.dat
+```
+
+``
+
+
 ## License
 
 This project is licensed under the Apache License, Version 2.0. See the license headers in individual files for details.
@@ -237,49 +200,3 @@ When contributing to this benchmark suite:
 3. Update installation scripts for new dependencies
 4. Add appropriate error handling and troubleshooting information 
 
-## Final Troubleshooting and Environment Setup for NIXL + GDS
-
-If you encounter issues with NIXL Python bindings or plugin detection, follow these steps to ensure your environment is correctly configured to use the system-installed NIXL with GDS support:
-
-### 1. Remove `nixl` from `requirements.txt`
-- Open `requirements.txt` and delete any line containing `nixl`.
-
-### 2. Recreate Your Virtual Environment (if needed)
-```bash
-# Remove old venv if it exists
-rm -rf venv
-
-# Create a new virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install requirements (without nixl)
-pip install -r requirements.txt
-pip install numpy  # If not already in requirements.txt
-```
-
-### 3. Set Environment Variables (every shell or add to ~/.bashrc)
-```bash
-export LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-export NIXL_PLUGIN_DIR=/usr/local/lib/x86_64-linux-gnu/plugins
-export PYTHONPATH=/usr/local/lib/python3.12/site-packages:$PYTHONPATH
-```
-To make these changes permanent, add them to your `~/.bashrc`:
-```bash
-echo 'export LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH' >> ~/.bashrc
-echo 'export NIXL_PLUGIN_DIR=/usr/local/lib/x86_64-linux-gnu/plugins' >> ~/.bashrc
-echo 'export PYTHONPATH=/usr/local/lib/python3.12/site-packages:$PYTHONPATH' >> ~/.bashrc
-```
-
-### 4. Test Your Setup
-```bash
-python3 -c "import nixl; print(nixl)"
-python3 check_nixl_plugins.py
-```
-You should see all expected plugins, including `GDS`, in the output.
-
----
-
-**Note:**
-- Do **not** pip install `nixl` in your venv unless you are building from your own working source and know it will succeed.
-- Always use the system install for NIXL when using custom builds with GDS support. 

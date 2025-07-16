@@ -4,7 +4,7 @@ import os
 import random
 import time
 
-def create_test_file(filename, size_gb=2.5):
+def create_test_file(filename, size_gb=5.0):
     """
     Create a test file of specified size in GB with random data.
     
@@ -54,7 +54,8 @@ def create_test_file(filename, size_gb=2.5):
     print(f"File location: {os.path.abspath(filename)}")
 
 if __name__ == "__main__":
-    test_filename = "test_file_2.5gb.dat"
+    file_size_gb = 5.0
+    test_filename = f"test_file_{file_size_gb}gb.dat"
     
     # Check if file already exists
     if os.path.exists(test_filename):
@@ -66,4 +67,4 @@ if __name__ == "__main__":
             print("Using existing file.")
             exit(0)
     
-    create_test_file(test_filename, 2.5) 
+    create_test_file(test_filename, file_size_gb) 

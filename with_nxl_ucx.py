@@ -16,6 +16,7 @@
 # limitations under the License.
 
 import os
+import time
 
 import numpy as np
 import torch
@@ -107,7 +108,9 @@ if __name__ == "__main__":
         exit()
 
     # test multiple postings
-    for _ in range(2):
+    transfer_start_time = time.time()
+    for i in range(2):
+        transfer_iter_start = time.time()
         state = nixl_agent2.transfer(xfer_handle_1)
         assert state != "ERR"
 
@@ -128,6 +131,17 @@ if __name__ == "__main__":
                 if nixl_agent1.check_remote_xfer_done("initiator", b"UUID1"):
                     target_done = True
                     print("Target done")
+        
+        transfer_iter_end = time.time()
+        transfer_time = transfer_iter_end - transfer_iter_start
+        data_size = 512  # 2 buffers * 256 bytes each
+        bandwidth = (data_size / transfer_time) / (1024 * 1024)  # MB/s
+        print(f"Transfer 1 iteration {i+1}: {transfer_time*1000000:.1f}μs, {bandwidth:.2f} MB/s")
+    
+    transfer_total_time = time.time() - transfer_start_time
+    total_data = 2 * 512  # 2 iterations * 512 bytes
+    total_bandwidth = (total_data / transfer_total_time) / (1024 * 1024)  # MB/s
+    print(f"Transfer 1 total: {transfer_total_time*1000000:.1f}μs, {total_bandwidth:.2f} MB/s")
 
     # prep transfer mode
     local_prep_handle = nixl_agent2.prep_xfer_dlist(
@@ -171,6 +185,7 @@ if __name__ == "__main__":
         print("Make prepped transfer failed.")
         exit()
 
+    transfer2_start = time.time()
     state = nixl_agent2.transfer(xfer_handle_2)
     assert state != "ERR"
 
@@ -193,6 +208,12 @@ if __name__ == "__main__":
             if nixl_agent1.check_remote_xfer_done("initiator", b"UUID2"):
                 target_done = True
                 print("Target done")
+    
+    transfer2_end = time.time()
+    transfer2_time = transfer2_end - transfer2_start
+    data_size = 512  # 2 buffers * 256 bytes each
+    bandwidth = (data_size / transfer2_time) / (1024 * 1024)  # MB/s
+    print(f"Transfer 2: {transfer2_time*1000000:.1f}μs, {bandwidth:.2f} MB/s")
 
     nixl_agent2.release_xfer_handle(xfer_handle_1)
     nixl_agent2.release_xfer_handle(xfer_handle_2)
@@ -205,4 +226,11 @@ if __name__ == "__main__":
     nixl_utils.free_passthru(addr1)
     nixl_utils.free_passthru(addr3)
 
+    # Summary of all transfers
+    total_transfers = 3  # 2 from transfer 1 + 1 from transfer 2
+    total_data_transferred = total_transfers * 512  # bytes
+    print(f"\n=== TRANSFER SUMMARY ===")
+    print(f"Total transfers: {total_transfers}")
+    print(f"Total data transferred: {total_data_transferred} bytes ({total_data_transferred/1024:.2f} KB)")
+    print(f"Average data per transfer: 512 bytes")
     print("Test Complete.")
