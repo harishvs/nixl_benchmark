@@ -2,6 +2,42 @@
 
 This repository contains benchmark scripts and examples for testing NVIDIA's NIXL (NVIDIA Interconnect eXchange Library) framework, which provides high-performance data transfer capabilities for distributed computing environments.
 
+## Files Description
+
+### Core Scripts
+
+- **`with_nxl_ucx.py`** - Comprehensive NIXL benchmark using UCX backend that demonstrates:
+  - Agent setup and configuration with UCX transport
+  - Memory registration and management for high-performance data transfer
+  - Bidirectional data transfer operations (READ/WRITE) between initiator and target agents
+  - Inter-agent notification system for coordination
+  - Proper resource cleanup and memory deallocation
+  - Performance validation through multiple transfer cycles
+  - **Communication**: CPU-to-CPU communication using DRAM memory (no GPU involved)
+  - **Data Transfer**: 512 bytes per transfer (2 × 256-byte buffers) with 3 total transfers (~1.5 KB total)
+
+- **`without_nxl.py`** - Baseline benchmark without NIXL for comparison
+
+- **`nixl_gds_example.py`** - Example demonstrating NIXL with GPU Direct Storage integration
+  - **Communication**: Disk-to-GPU communication using VRAM memory (no CPU involved)
+  - **Data Transfer**: 5 GB test input file with buffer set to 5 MB
+### Setup Scripts
+
+- **`install_gds.sh`** - Installs NVIDIA GDS with proper repository setup
+- **`install_gds_alt.sh`** - Alternative installation script with fallback options
+- **`setup_venv.sh`** - Sets up Python virtual environment and dependencies
+
+### Build Scripts
+
+- **`rebuild_nixl_with_gds.sh`** - Comprehensive script to rebuild NIXL with GDS support
+- **`rebuild_nixl_simple.sh`** - Simplified rebuild script for common scenarios
+
+### Diagnostic Tools
+
+- **`check_nixl_plugins.py`** - Diagnoses NIXL installation and available plugins
+- **`nixl_gds_example_fallback.py`** - GDS example with fallback for missing GDS plugin
+
+
 ## Prerequisites
 
 ### 1. NVIDIA GDS (GPU Direct Storage)
@@ -44,45 +80,6 @@ source venv/bin/activate
 
 ```
 
-
-### 3. NIXL Library
-
-Ensure NIXL is properly installed and configured in your system. The `NIXL_PLUGIN_DIR` environment variable should be set to point to your NIXL plugins directory.
-
-## Files Description
-
-### Core Scripts
-
-- **`with_nxl_ucx.py`** - Comprehensive NIXL benchmark using UCX backend that demonstrates:
-  - Agent setup and configuration with UCX transport
-  - Memory registration and management for high-performance data transfer
-  - Bidirectional data transfer operations (READ/WRITE) between initiator and target agents
-  - Inter-agent notification system for coordination
-  - Proper resource cleanup and memory deallocation
-  - Performance validation through multiple transfer cycles
-  - **Communication**: CPU-to-CPU communication using DRAM memory (no GPU involved)
-  - **Data Transfer**: 512 bytes per transfer (2 × 256-byte buffers) with 3 total transfers (~1.5 KB total)
-
-- **`without_nxl.py`** - Baseline benchmark without NIXL for comparison
-
-- **`nixl_gds_example.py`** - Example demonstrating NIXL with GPU Direct Storage integration
-
-### Setup Scripts
-
-- **`install_gds.sh`** - Installs NVIDIA GDS with proper repository setup
-- **`install_gds_alt.sh`** - Alternative installation script with fallback options
-- **`setup_venv.sh`** - Sets up Python virtual environment and dependencies
-
-### Build Scripts
-
-- **`rebuild_nixl_with_gds.sh`** - Comprehensive script to rebuild NIXL with GDS support
-- **`rebuild_nixl_simple.sh`** - Simplified rebuild script for common scenarios
-
-### Diagnostic Tools
-
-- **`check_nixl_plugins.py`** - Diagnoses NIXL installation and available plugins
-- **`nixl_gds_example_fallback.py`** - GDS example with fallback for missing GDS plugin
-
 ## Running the Benchmarks
 
 ### Basic NIXL Test
@@ -104,25 +101,10 @@ python without_nixl.py
 
 ### GDS Example
 
-
-
-**Note**: The GDS example requires NVIDIA GDS to be installed and NIXL to be built with GDS support. If you encounter issues, use the fallback version or run the diagnostic script.
-
-
-
-
 ### Rebuilding NIXL with GDS Support
 
 If you need GDS functionality, you can rebuild NIXL with GDS support:
 
-```bash
-
-
-
-# Simple rebuild (recommended)
-# ./rebuild_nixl_simple.sh
-
-```
 
 **Prerequisites for rebuilding:**
 - NIXL source code (set `NIXL_SOURCE_URL` or place in `../nixl`, `../../nixl`, or `./nixl`)
@@ -131,18 +113,12 @@ If you need GDS functionality, you can rebuild NIXL with GDS support:
 - NVIDIA GDS (installed via `./install_gds.sh`)
 - Build tools (automatically installed if missing)
 
-**After rebuilding, update your Python environment:**
-
-If you're using a virtual environment, you need to install the newly built NIXL:
 
 ```bash
 # Navigate to the NIXL source directory
 
 
 # Install in development mode to your virtual environment
-pip install -e .
-
-./install_gds.sh
 
 cd ~/nixl_benchmark/nixl_build/nixl_source
 
@@ -182,7 +158,7 @@ See `requirements.txt` for Python package dependencies:
 - First generate the test file 
 ```bash
 python create_test_file.py
-python nixl_gds_example.py test_file_2.5gb.dat
+python nixl_gds_example.py test_file_5gb.dat
 ```
 
 ``
