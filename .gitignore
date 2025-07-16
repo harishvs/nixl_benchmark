@@ -93,3 +93,5 @@ plugins/
 
 nixl_build/
 nixl/
+
+*.dat*
