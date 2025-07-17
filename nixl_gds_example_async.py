@@ -302,8 +302,17 @@ async def main():
     max_buffers_per_batch = 32  # Limit buffers per batch to avoid resource issues
     batch_size = max_buffers_per_batch * buf_size  # 128 MB per batch
     
+    # Check for demo mode
+    demo_mode = False
+    if len(sys.argv) >= 3 and sys.argv[2].lower() == "demo":
+        demo_mode = True
+    
     if len(sys.argv) < 2:
-        print("Please specify file path in argv")
+        print("Usage: python nixl_gds_example_async.py <file_path> [mode]")
+        print("  mode options:")
+        print("    demo: Run only 3 buffer iterations for quick testing")
+        print("    full: Process entire file (may cause resource exhaustion on large files)")
+        print("    (none): Process up to 3 batches (384 MB) for safety")
         exit(0)
 
     # Get file size and calculate batches
@@ -316,14 +325,31 @@ async def main():
     print(f"Batch size: {batch_size:,} bytes ({batch_size/(1024**2):.1f} MB)")
     print(f"Number of batches: {num_batches}")
     
-    # Limit to avoid segfault for now - process first 3 batches as demo
-    if num_batches > 3:
-        print(f"\nNote: To avoid resource exhaustion, limiting to first 3 batches for demonstration.")
-        print(f"Processing {3 * batch_size:,} bytes ({(3 * batch_size)/(1024**2):.0f} MB) of the file.")
-        # Limit for demo
-        demo_size = min(file_size, 3 * batch_size)
-        file_size = demo_size
-        num_batches = 3
+    if demo_mode:
+        print(f"\n🎯 DEMO MODE: Running only 3 buffer iterations for quick testing")
+        print(f"Processing {3 * buf_size:,} bytes ({(3 * buf_size)/(1024**2):.0f} MB) of the file.")
+        # Limit to just 3 buffers (12 MB total)
+        file_size = min(file_size, 3 * buf_size)
+        num_batches = 1  # Single batch with 3 buffers
+        batch_size = file_size
+        max_buffers_per_batch = 3
+    else:
+        # Check for "full" argument to process entire file
+        process_full_file = len(sys.argv) >= 3 and sys.argv[2].lower() == "full"
+        
+        if process_full_file:
+            print(f"🚀 FULL MODE: Processing entire file")
+            print(f"Processing {file_size:,} bytes ({file_size/(1024**2):.0f} MB) of the file.")
+        elif num_batches > 3:
+            print(f"⚠️  Large file detected. For safety, limiting to first 3 batches (384 MB).")
+            print(f"   Use 'full' argument to process entire file: python {sys.argv[0]} {sys.argv[1]} full")
+            print(f"Processing {3 * batch_size:,} bytes ({(3 * batch_size)/(1024**2):.0f} MB) of the file.")
+            # Limit for safety
+            demo_size = min(file_size, 3 * batch_size)
+            file_size = demo_size
+            num_batches = 3
+        else:
+            print(f"Processing {file_size:,} bytes ({file_size/(1024**2):.0f} MB) of the file.")
 
     print("Using NIXL Plugins from:")
     print(os.environ["NIXL_PLUGIN_DIR"])
