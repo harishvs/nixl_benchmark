@@ -100,6 +100,7 @@ def run_batch_transfer(agent, write_addrs, read_addrs, file_path, buf_size, batc
     print(f"{'='*80}")
     print(f"Total data processed: {total_size:,} bytes ({total_size/(1024**3):.2f} GB)")
     print(f"Total buffers processed: {len(all_write_times):,}")
+    print(f"Parallel buffer transfers: 1 (sequential execution)")
     print(f"")
     print(f"WRITE Operations (GPU to Disk):")
     print(f"  Total WRITE time: {total_write_time*1000:.2f} ms")
