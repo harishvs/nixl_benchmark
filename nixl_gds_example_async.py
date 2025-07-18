@@ -183,12 +183,12 @@ async def run_single_buffer_test_async(agent_name, write_addr, read_addr, file_p
 async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size, 
                                    write_addrs, read_addrs, num_batches, buffers_per_batch):
     """
-    Async version with 1 parallel transfer (sequential but using async patterns).
+    Async version with 2 parallel transfers.
     """
     print("================================================================================")
-    print("ASYNC VERSION - 1 PARALLEL TRANSFER")
+    print("ASYNC VERSION - 2 PARALLEL TRANSFERS")
     print("================================================================================")
-    print("Processing buffers sequentially using async patterns with 1 parallel transfer.")
+    print("Processing buffers with up to 2 parallel transfers using async patterns.")
     
     overall_start = time.time()
     all_write_times = []
@@ -213,27 +213,49 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
         batch_write_times = []
         batch_read_times = []
         
-        for buf_idx in range(current_buffers):
-            buffer_offset = batch_offset + (buf_idx * buf_size)
-            current_buf_size = min(buf_size, current_batch_size - (buf_idx * buf_size))
-            global_buffer_id = batch_idx * buffers_per_batch + buf_idx
+        # Process buffers in parallel groups of 2
+        parallel_limit = 2
+        buf_idx = 0
+        
+        while buf_idx < current_buffers:
+            # Create tasks for up to 2 parallel transfers
+            tasks = []
+            task_indices = []
             
-            # Process buffer using async pattern but with single agent
-            try:
-                success, write_time, read_time = await run_single_buffer_test_async_simple(
-                    agent, write_addrs[buf_idx], read_addrs[buf_idx], 
+            for i in range(min(parallel_limit, current_buffers - buf_idx)):
+                current_buf_idx = buf_idx + i
+                buffer_offset = batch_offset + (current_buf_idx * buf_size)
+                current_buf_size = min(buf_size, current_batch_size - (current_buf_idx * buf_size))
+                global_buffer_id = batch_idx * buffers_per_batch + current_buf_idx
+                
+                task = run_single_buffer_test_async_simple(
+                    agent, write_addrs[current_buf_idx], read_addrs[current_buf_idx], 
                     file_path, current_buf_size, buffer_offset, global_buffer_id
                 )
+                tasks.append(task)
+                task_indices.append(current_buf_idx)
+            
+            # Execute parallel transfers
+            try:
+                results = await asyncio.gather(*tasks)
                 
-                if not success:
-                    print(f"Failed to process buffer {buf_idx} in batch {batch_idx}")
-                    return False
+                # Process results
+                for i, result in enumerate(results):
+                    current_buf_idx = task_indices[i]
                     
-                batch_write_times.append(write_time)
-                batch_read_times.append(read_time)
+                    # result should be a tuple (success, write_time, read_time)
+                    success, write_time, read_time = result
+                    if not success:
+                        print(f"Failed to process buffer {current_buf_idx} in batch {batch_idx}")
+                        return False
+                        
+                    batch_write_times.append(write_time)
+                    batch_read_times.append(read_time)
+                    
+                    if current_buf_idx < 3:  # Show timing for first few buffers
+                        print(f"  Buffer {current_buf_idx}: WRITE={write_time*1000:.2f}ms, READ={read_time*1000:.2f}ms")
                 
-                if buf_idx < 3:  # Show timing for first few buffers
-                    print(f"  Buffer {buf_idx}: WRITE={write_time*1000:.2f}ms, READ={read_time*1000:.2f}ms")
+                buf_idx += len(tasks)
                     
             except Exception as e:
                 print(f"NIXL operation failed: {e}")
@@ -270,11 +292,11 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
     total_read_time = sum(all_read_times)
     
     print(f"\n{'='*80}")
-    print(f"PERFORMANCE SUMMARY (ASYNC WITH 1 PARALLEL TRANSFER)")
+    print(f"PERFORMANCE SUMMARY (ASYNC WITH 2 PARALLEL TRANSFERS)")
     print(f"{'='*80}")
     print(f"Total data processed: {total_size:,} bytes ({total_size/(1024**3):.2f} GB)")
     print(f"Total buffers processed: {len(all_write_times):,}")
-    print(f"Parallel buffer transfers: 1 (intended - falls back to simulation due to NIXL limitations)")
+    print(f"Parallel buffer transfers: 2 (intended - falls back to simulation due to NIXL limitations)")
     print(f"")
     print(f"WRITE Operations (GPU to Disk):")
     print(f"  Total WRITE time: {total_write_time*1000:.2f} ms")
