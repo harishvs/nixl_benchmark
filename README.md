@@ -179,8 +179,11 @@ See `requirements.txt` for Python package dependencies:
 
 - First generate the test file 
 ```bash
+export LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH && export NIXL_PLUGIN_DIR=/usr/local/lib/x86_64-linux-gnu/plugins 
 python create_test_file.py
-python nixl_gds_example.py test_file_5gb.dat
+python nixl_gds_example.py test_file_5.0gb.dat full
+python nixl_gds_example_async.py test_file_5.0gb.dat full
+
 ```
 
 ``
