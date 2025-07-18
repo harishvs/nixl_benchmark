@@ -86,7 +86,6 @@ source venv/bin/activate
 
 ```bash
 # Activate virtual environment
-source venv/bin/activate
 
 # Run the comprehensive NIXL test
 python with_nxl_ucx.py
@@ -120,11 +119,34 @@ If you need GDS functionality, you can rebuild NIXL with GDS support:
 
 # Install in development mode to your virtual environment
 
-cd ~/nixl_benchmark/nixl_build/nixl_source
+cd ~/nixl_benchmark/nixl/
 
 sudo update-alternatives --install /usr/local/cuda cuda /usr/local/cuda-12.8 128
 
-cd nixl_build/nixl_source && rm -rf build && export LD_LIBRARY_PATH=/usr/local/cuda-12.8/targets/x86_64-linux/lib:$LD_LIBRARY_PATH && meson setup build --prefix=/usr/local -Dgds_path=/usr/local/cuda-12.8
+# cd nixl_build/nixl_source && rm -rf build && 
+sudo apt install meson
+pip install --upgrade meson
+
+sudo apt update && sudo apt install -y libucx-dev ucx-utils
+
+pip install pybind11
+
+cd /tmp && wget https://github.com/openucx/ucx/releases/download/v1.17.0/ucx-1.17.0.tar.gz
+tar -xzf ucx-1.17.0.tar.gz && cd ucx-1.17.0
+
+sudo apt remove -y libucx-dev libucx0 ucx-utils && sudo apt install -y build-essential autoconf automake libtool
+
+./configure --prefix=/usr/local --with-cuda=/usr/local/cuda-12.8 --enable-optimizations --disable-logging --disable-debug --disable-assertions --disable-params-check
+
+
+
+make -j$(nproc)
+
+sudo make install
+
+sudo ldconfig
+
+cd ~/nixl_benchmark/nixl && export LD_LIBRARY_PATH=/usr/local/cuda-12.8/targets/x86_64-linux/lib:$LD_LIBRARY_PATH && meson setup build --prefix=/usr/local -Dgds_path=/usr/local/cuda-12.8 --wipe
 
 ninja -C build
 
@@ -140,7 +162,7 @@ sudo ldconfig
 After installation, run the diagnostic script to confirm GDS support:
 
 ```bash
-python check_nixl_plugins.py
+export LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH && export NIXL_PLUGIN_DIR=/usr/local/lib/x86_64-linux-gnu/plugins && python check_nixl_plugins.py
 ```
 
 You should now see `"GDS"` in the available plugins list.
