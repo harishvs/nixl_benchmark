@@ -23,7 +23,7 @@ import traceback
 
 import nixl._utils as nixl_utils
 from nixl._api import nixl_agent, nixl_agent_config
-
+import torch
 
 async def wait_for_transfer_completion(agent, xfer_handle, operation_name):
     """
@@ -326,6 +326,11 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
 
 
 async def main():
+    print(f"CUDA device count: {torch.cuda.device_count()}")
+    print(f"Current CUDA device: {torch.cuda.current_device()}")
+    print(f"CUDA device name: {torch.cuda.get_device_name()}")
+    print(f"CUDA device properties: {torch.cuda.get_device_properties(torch.cuda.current_device())}")
+    
     # Use moderate buffer sizes to balance performance and resource usage
     buf_size = 4 * 1024 * 1024  # 4 MB per buffer
     max_buffers_per_batch = 32  # Limit buffers per batch to avoid resource issues
