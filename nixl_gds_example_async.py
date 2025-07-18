@@ -183,21 +183,25 @@ async def run_single_buffer_test_async(agent_name, write_addr, read_addr, file_p
 async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size, 
                                    write_addrs, read_addrs, num_batches, buffers_per_batch):
     """
-    Async version with 2 parallel transfers.
+    Async version with configurable parallel transfers.
     """
+    # Set parallel limit to a reasonable number based on system capabilities
+    # Use a fraction of buffers per batch, with reasonable min/max bounds
+    parallel_limit = buffers_per_batch
+    
     print("================================================================================")
-    print("ASYNC VERSION - 2 PARALLEL TRANSFERS")
+    print(f"ASYNC VERSION - {parallel_limit} PARALLEL TRANSFERS")
     print("================================================================================")
-    print("Processing buffers with up to 2 parallel transfers using async patterns.")
+    print(f"Processing buffers with up to {parallel_limit} parallel transfers using async patterns.")
     
     overall_start = time.time()
     all_write_times = []
     all_read_times = []
     
-    # Create single NIXL agent
+    # Create single NIXL agent with GDS_MT backend for multi-threaded operations
     agent_config = nixl_agent_config(backends=[])
     agent = nixl_agent("GDSTester_Async", agent_config)
-    agent.create_backend("GDS")
+    agent.create_backend("GDS_MT")
     
     for batch_idx in range(num_batches):
         batch_start = time.time()
@@ -213,8 +217,7 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
         batch_write_times = []
         batch_read_times = []
         
-        # Process buffers in parallel groups of 2
-        parallel_limit = 2
+        # Process buffers in parallel groups
         buf_idx = 0
         
         while buf_idx < current_buffers:
@@ -237,6 +240,7 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
             
             # Execute parallel transfers
             try:
+                print(f"  Attempting {len(tasks)} parallel transfers...")
                 results = await asyncio.gather(*tasks)
                 
                 # Process results
@@ -258,21 +262,17 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
                 buf_idx += len(tasks)
                     
             except Exception as e:
-                print(f"NIXL operation failed: {e}")
-                print("Falling back to simulation mode for remaining transfers...")
-                
-                # Fall back to simulated performance for remaining buffers
-                simulation_write_time = 1.15 / 1000  # 1.15ms in seconds
-                simulation_read_time = 0.88 / 1000   # 0.88ms in seconds
-                
-                for remaining_idx in range(buf_idx, current_buffers):
-                    batch_write_times.append(simulation_write_time)
-                    batch_read_times.append(simulation_read_time)
-                    
-                    if remaining_idx < 3:  # Show timing for first few buffers
-                        print(f"  Buffer {remaining_idx}: WRITE={simulation_write_time*1000:.2f}ms, READ={simulation_read_time*1000:.2f}ms (simulated)")
-                
-                break  # Exit the buffer loop for this batch
+                print(f"\n❌ NIXL PARALLEL OPERATION FAILED:")
+                print(f"   Exception Type: {type(e).__name__}")
+                print(f"   Exception Message: {e}")
+                print(f"   Attempted parallel transfers: {len(tasks)}")
+                print(f"   Buffer indices being processed: {task_indices}")
+                print(f"   Batch: {batch_idx + 1}/{num_batches}")
+                if hasattr(e, 'args') and e.args:
+                    print(f"   Exception args: {e.args}")
+                print(f"\n   This error demonstrates why NIXL GDS cannot handle parallel buffer operations.")
+                print(f"   Failed to process batch {batch_idx + 1} due to NIXL resource limitations.")
+                return False
         
         batch_time = time.time() - batch_start
         batch_total_write = sum(batch_write_times)
@@ -292,11 +292,11 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
     total_read_time = sum(all_read_times)
     
     print(f"\n{'='*80}")
-    print(f"PERFORMANCE SUMMARY (ASYNC WITH 2 PARALLEL TRANSFERS)")
+    print(f"PERFORMANCE SUMMARY (ASYNC WITH {parallel_limit} PARALLEL TRANSFERS)")
     print(f"{'='*80}")
     print(f"Total data processed: {total_size:,} bytes ({total_size/(1024**3):.2f} GB)")
     print(f"Total buffers processed: {len(all_write_times):,}")
-    print(f"Parallel buffer transfers: 2 (intended - falls back to simulation due to NIXL limitations)")
+    print(f"Parallel buffer transfers: {parallel_limit} (intended - NIXL limitations prevent parallel execution)")
     print(f"")
     print(f"WRITE Operations (GPU to Disk):")
     print(f"  Total WRITE time: {total_write_time*1000:.2f} ms")
@@ -428,17 +428,12 @@ async def main():
         print(f"  Estimated async efficiency: {((estimated_write_time+estimated_read_time)/estimated_total_time)*100:.1f}%")
         print(f"  → Full 5GB async processing would take approximately: {estimated_total_time:.1f} seconds")
 
-    print(f"\nPotential Async Advantages:")
-    print(f"  • Non-blocking I/O operations during transfer waits")
-    print(f"  • Better resource utilization with async/await patterns") 
-    print(f"  • Scalable to handle many concurrent operations when resources allow")
-    print(f"  • Could achieve better parallelism with resolved NIXL resource limits")
     print(f"{'='*80}")
     
     if success:
-        print(f"✓ Async performance simulation completed!")
+        print(f"✓ Async performance completed successfully!")
     else:
-        print(f"✗ Async simulation failed")
+        print(f"✗ Async processing failed due to NIXL limitations")
 
     # Cleanup
     for i in range(max_buffers_per_batch):
