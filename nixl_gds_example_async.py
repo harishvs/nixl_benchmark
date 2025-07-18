@@ -194,10 +194,10 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
     all_write_times = []
     all_read_times = []
     
-    # Create single NIXL agent
+    # Create single NIXL agent with GDS_MT backend for multi-threaded operations
     agent_config = nixl_agent_config(backends=[])
     agent = nixl_agent("GDSTester_Async", agent_config)
-    agent.create_backend("GDS")
+    agent.create_backend("GDS_MT")
     
     for batch_idx in range(num_batches):
         batch_start = time.time()
@@ -214,7 +214,7 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
         batch_read_times = []
         
         # Process buffers in parallel groups of 2
-        parallel_limit = 2
+        parallel_limit = 40
         buf_idx = 0
         
         while buf_idx < current_buffers:
@@ -292,7 +292,7 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
     total_read_time = sum(all_read_times)
     
     print(f"\n{'='*80}")
-    print(f"PERFORMANCE SUMMARY (ASYNC WITH 2 PARALLEL TRANSFERS)")
+    print(f"PERFORMANCE SUMMARY (ASYNC WITH {parallel_limit} PARALLEL TRANSFERS)")
     print(f"{'='*80}")
     print(f"Total data processed: {total_size:,} bytes ({total_size/(1024**3):.2f} GB)")
     print(f"Total buffers processed: {len(all_write_times):,}")
