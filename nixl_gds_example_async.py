@@ -19,6 +19,7 @@ import os
 import sys
 import asyncio
 import time
+import traceback
 
 import nixl._utils as nixl_utils
 from nixl._api import nixl_agent, nixl_agent_config
@@ -270,6 +271,12 @@ async def run_batch_transfer_async(file_path, total_size, batch_size, buf_size,
                 print(f"   Batch: {batch_idx + 1}/{num_batches}")
                 if hasattr(e, 'args') and e.args:
                     print(f"   Exception args: {e.args}")
+                
+                print(f"\n📋 FULL STACK TRACE:")
+                print("=" * 80)
+                traceback.print_exc()
+                print("=" * 80)
+                
                 print(f"\n   This error demonstrates why NIXL GDS cannot handle parallel buffer operations.")
                 print(f"   Failed to process batch {batch_idx + 1} due to NIXL resource limitations.")
                 return False
